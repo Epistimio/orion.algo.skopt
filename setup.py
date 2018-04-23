@@ -1,25 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Installation script for `metaopt.algo.skopt.bayes`."""
+"""Installation script for `orion.algo.skopt.bayes`."""
 from setuptools import setup
 
 setup_args = dict(
-    name='metaopt.algo.skopt.bayes',
+    name='orion.algo.skopt.bayes',
     version=0.1,
     description="Implement a wrapper for skopt bayesian optimizer, for demo and testing.",
     license='BSD-3-Clause',
     author='Xavier Bouthillier',
     author_email='xavier.bouthillier@umontreal.ca',
-    url='https://github.com/bouthilx/metaopt-skopt-bayes',
-    packages=['metaopt.algo.skopt'],
+    url='https://github.com/bouthilx/orion-skopt-bayes',
+    packages=['orion.algo.skopt'],
     package_dir={'': 'src'},
     include_package_data=True,
     entry_points={
         'OptimizationAlgorithm': [
-            'skopt_bayes = metaopt.algo.skopt.bayes:BayesianOptimizer'
+            'skopt_bayes = orion.algo.skopt.bayes:BayesianOptimizer'
             ],
         },
-    install_requires=['metaopt.core', 'scikit-optimize>=0.5.1'],
+    install_requires=['orion.core', 'scikit-optimize>=0.5.1'],
     setup_requires=['setuptools'],
     # "Zipped eggs don't play nicely with namespace packaging"
     # from https://github.com/pypa/sample-namespace-packages

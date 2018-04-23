@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-:mod:`metaopt.algo.skopt.bayes` -- Perform bayesian optimization
+:mod:`orion.algo.skopt.bayes` -- Perform bayesian optimization
 ==================================================================================
 
 .. module:: bayes
@@ -14,18 +14,18 @@ from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real, Integer, Categorical
 
-from metaopt.algo.base import BaseAlgorithm
+from orion.algo.base import BaseAlgorithm
 
 
-def convert_metaopt_space_to_skopt_space(metaopt_space):
+def convert_orion_space_to_skopt_space(orion_space):
 
     dimensions = []
-    for key, dimension in metaopt_space.items():
+    for key, dimension in orion_space.items():
         dimension_class = globals()[dimension.__class__.__name__]
 
         low = dimension._args[0]
         high = low + dimension._args[1]
-        # NOTE: A hack, because metaopt priors have non-inclusive higher bound
+        # NOTE: A hack, because orion priors have non-inclusive higher bound
         #       while scikit-optimizer have inclusive ones.
         high = high - numpy.abs(high - 0.0001) * 0.0001
         dimensions.append(
@@ -44,7 +44,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
         self.optimizer = Optimizer(
             base_estimator=GaussianProcessRegressor(**kwargs),
-            dimensions=convert_metaopt_space_to_skopt_space(space))
+            dimensions=convert_orion_space_to_skopt_space(space))
 
         self.strategy = "cl_min"
 
