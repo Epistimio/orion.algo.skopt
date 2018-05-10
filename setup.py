@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""Installation script for `orion.algo.skopt.bayes`."""
+"""Installation script for `orion.algo.skopt`."""
 from setuptools import setup
+
+tests_require = ['pytest>=3.0.0']
 
 setup_args = dict(
     name='orion.algo.skopt',
@@ -20,7 +22,9 @@ setup_args = dict(
             ],
         },
     install_requires=['orion.core', 'scikit-optimize>=0.5.1'],
-    setup_requires=['setuptools'],
+    tests_require=tests_require,
+    setup_requires=['setuptools', 'pytest-runner>=2.0,<3dev'],
+    extras_require=dict(test=tests_require),
     # "Zipped eggs don't play nicely with namespace packaging"
     # from https://github.com/pypa/sample-namespace-packages
     zip_safe=False

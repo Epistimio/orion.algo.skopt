@@ -1,11 +1,6 @@
 # General info
 include LICENSE
 include *.rst
-exclude RESEARCH.md
-
-# Control and setup helpers
-include src/metaopt/core/_version.py
-include versioneer.py
 
 # Exclude development helpers
 exclude .travis.yml
