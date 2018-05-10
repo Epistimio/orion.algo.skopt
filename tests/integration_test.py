@@ -29,15 +29,9 @@ def clean_db(database):
     database.resources.drop()
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_bayesian_optimizer(database, monkeypatch):
-    """Check that random algorithm is used, when no algo is chosen explicitly."""
-    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
-    process = subprocess.Popen(["orion", "--config", "./orion_config_bayes.yaml",
-                                "./rosenbrock.py", "-x~uniform(-10, 10, shape=3)"])
-    rcode = process.wait()
-    assert rcode == 0
-    exp = list(database.experiments.find({'name': 'orion_skopt_bayes_test'}))
+def present_results(database, exp_name):
+    """Present 10 best trials in order from `exp_name`."""
+    exp = list(database.experiments.find({'name': exp_name}))
     assert len(exp) == 1
     exp = exp[0]
     assert '_id' in exp
@@ -57,9 +51,32 @@ def test_bayesian_optimizer(database, monkeypatch):
     ctrials[:] = [ctrials[i] for i in idx]
     loss_per_trial = zip(losses, ctrials)
 
-    print("###           Top 10/{} trials           ###".format(len(ctrials)))
+    print("###           Top 10/{} Trials           ###".format(len(ctrials)))
     print("###    Loss  ---  Trial  ---  End Time    ###")
     for i, (loss, trial) in enumerate(loss_per_trial):
         if i == 10:
             break
         print(loss, trial, trial.end_time)
+
+
+@pytest.mark.usefixtures("clean_db")
+def test_bayesian_optimizer(database, monkeypatch):
+    """Check functionality of BayesianOptimizer wrapper for single shaped dimension."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+    process = subprocess.Popen(["orion", "--config", "./orion_config_bayes.yaml",
+                                "./rosenbrock.py", "-x~uniform(-5, 5, shape=3)"])
+    rcode = process.wait()
+    assert rcode == 0
+    present_results(database, "orion_skopt_bayes_test")
+
+
+@pytest.mark.usefixtures("clean_db")
+def test_bayesian_optimizer_two_inputs(database, monkeypatch):
+    """Check functionality of BayesianOptimizer wrapper for 2 dimensions."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+    process = subprocess.Popen(["orion", "--config", "./orion_config_bayes.yaml",
+                                "./rosenbrock.py", "-x~uniform(-5, 5, shape=2)",
+                                "-y~uniform(-10, 10)"])
+    rcode = process.wait()
+    assert rcode == 0
+    present_results(database, "orion_skopt_bayes_test")
