@@ -4,13 +4,13 @@
 from setuptools import setup
 
 setup_args = dict(
-    name='orion.algo.skopt.bayes',
+    name='orion.algo.skopt',
     version=0.1,
-    description="Implement a wrapper for skopt bayesian optimizer, for demo and testing.",
+    description="Implement a wrapper for skopt optimizers.",
     license='BSD-3-Clause',
     author='Xavier Bouthillier',
     author_email='xavier.bouthillier@umontreal.ca',
-    url='https://github.com/bouthilx/orion-skopt-bayes',
+    url='https://github.com/bouthilx/orion.algo.skopt',
     packages=['orion.algo.skopt'],
     package_dir={'': 'src'},
     include_package_data=True,
