@@ -14,6 +14,7 @@ from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real, Integer, Categorical  # noqa
 
 from orion.algo.base import BaseAlgorithm
+from orion.algo.space import (pack_point, unpack_point)
 
 
 def convert_orion_space_to_skopt_space(orion_space):
@@ -41,42 +42,6 @@ def convert_orion_space_to_skopt_space(orion_space):
                     low=low, high=high))
 
     return Space(dimensions)
-
-
-def pack_point(point, orion_space):
-    """Take a list of points and pack it appropriately as a point from `orion_space`.
-
-    :param point: array-like or list of numbers
-    :param orion_space: problem's parameter definition
-    """
-    packed = []
-    idx = 0
-    for dim in orion_space.values():
-        shape = dim.shape
-        if shape:
-            next_idx = idx + shape[0]
-            packed.append(tuple(point[idx:next_idx]))
-            idx = next_idx
-        else:
-            packed.append(point[idx])
-            idx += 1
-    return packed
-
-
-def unpack_point(point, orion_space):
-    """Take a list of points and pack it appropriately as a point from `orion_space`.
-
-    :param point: array-like or list of numbers
-    :param orion_space: problem's parameter definition
-    """
-    unpacked = []
-    for subpoint, dim in zip(point, orion_space.values()):
-        shape = dim.shape
-        if shape:
-            unpacked.extend(subpoint)
-        else:
-            unpacked.append(subpoint)
-    return unpacked
 
 
 class BayesianOptimizer(BaseAlgorithm):

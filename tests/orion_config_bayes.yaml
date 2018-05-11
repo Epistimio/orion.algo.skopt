@@ -1,7 +1,7 @@
 name: orion_skopt_bayes_test
 
 pool_size: 1
-max_trials: 100
+max_trials: 40
 
 algorithms:
   BayesianOptimizer:
