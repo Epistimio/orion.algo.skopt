@@ -11,7 +11,7 @@
 import numpy
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
-from skopt.space import Real, Integer, Categorical  # noqa
+from skopt.space import Real
 
 from orion.algo.base import BaseAlgorithm
 from orion.algo.space import (pack_point, unpack_point)
@@ -21,25 +21,21 @@ def convert_orion_space_to_skopt_space(orion_space):
     """Convert Oríon's definition of problem's domain to a skopt compatible."""
     dimensions = []
     for key, dimension in orion_space.items():
-        dimension_class = globals()[dimension.__class__.__name__]
-
         #  low = dimension._args[0]
         #  high = low + dimension._args[1]
         low, high = dimension.interval()
         # NOTE: A hack, because orion priors have non-inclusive higher bound
         #       while scikit-optimizer have inclusive ones.
-        high = high - numpy.abs(high - 0.0001) * 0.0001
+        high = numpy.nextafter(high, high - 1)
         shape = dimension.shape
         assert not shape or len(shape) == 1
         if not shape:
             shape = (1,)
         # Unpack dimension
         for i in range(shape[0]):
-            dimensions.append(
-                dimension_class(
-                    name=key + '_' + str(i),
-                    prior=dimension._prior_name,
-                    low=low, high=high))
+            dimensions.append(Real(name=key + '_' + str(i),
+                                   prior='uniform',
+                                   low=low, high=high))
 
     return Space(dimensions)
 
@@ -51,7 +47,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
     def __init__(self, space,
                  strategy='cl_min', n_initial_points=10, acq_func="gp_hedge",
-                 **gp_kwargs):
+                 alpha=1e-10, n_restarts_optimizer=0, normalize_y=False):
         """Initialize skopt's BayesianOptimizer.
 
         Copying documentation from `skopt.learning.gaussian_process.gpr` and
@@ -74,11 +70,6 @@ class BayesianOptimizer(BaseAlgorithm):
            Function to minimize over the posterior distribution. Can be:
            ``["LCB", "EI", "PI", "gp_hedge", "EIps", "PIps"]``. Check skopt
            docs for details.
-        gp_kwargs : dict
-           Optional arguments passed to `skopt.learning.GaussianProcessRegressor`.
-
-        gp_kwargs
-        ---------
         alpha : float or array-like (default: 1e-10)
            Value added to the diagonal of the kernel matrix during fitting.
            Larger values correspond to increased noise level in the observations
@@ -104,14 +95,18 @@ class BayesianOptimizer(BaseAlgorithm):
            prior based on the data, which contradicts the likelihood principle;
            normalization is thus disabled per default.
 
+        .. seemore::
+           About optional arguments passed to `skopt.learning.GaussianProcessRegressor`.
+
         """
         super(BayesianOptimizer, self).__init__(space,
-                                                strategy=strategy)
-
-        self.optimizer = Optimizer(
-            base_estimator=GaussianProcessRegressor(**gp_kwargs),
-            dimensions=convert_orion_space_to_skopt_space(space),
-            n_initial_points=n_initial_points, acq_func=acq_func)
+                                                strategy=strategy,
+                                                n_initial_points=n_initial_points,
+                                                acq_func=acq_func,
+                                                alpha=alpha,
+                                                n_restarts_optimizer=n_restarts_optimizer,
+                                                normalize_y=normalize_y)
+        self.optimizer = None
 
     def suggest(self, num=1):
         """Suggest a `num`ber of new sets of parameters.
@@ -119,6 +114,7 @@ class BayesianOptimizer(BaseAlgorithm):
         Perform a step towards negative gradient and suggest that point.
 
         """
+        self._init_optimizer()
         points = self.optimizer.ask(n_points=num, strategy=self.strategy)
         return [pack_point(point, self.space) for point in points]
 
@@ -129,5 +125,15 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
+        self._init_optimizer()
         self.optimizer.tell([unpack_point(point, self.space) for point in points],
                             [r['objective'] for r in results])
+
+    def _init_optimizer(self):
+        if self.optimizer is None:
+            self.optimizer = Optimizer(
+                base_estimator=GaussianProcessRegressor(alpha=self.alpha,
+                                                        n_restarts_optimizer=self.n_restarts_optimizer,
+                                                        normalize_y=self.normalize_y),
+                dimensions=convert_orion_space_to_skopt_space(self.space),
+                n_initial_points=self.n_initial_points, acq_func=self.acq_func)
