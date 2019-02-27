@@ -47,7 +47,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
     def __init__(self, space,
                  strategy='cl_min', n_initial_points=10, acq_func="gp_hedge",
-                 alpha=1e-10, n_restarts_optimizer=0, normalize_y=False):
+                 alpha=1e-10, n_restarts_optimizer=0, noise='gaussian', normalize_y=False):
         """Initialize skopt's BayesianOptimizer.
 
         Copying documentation from `skopt.learning.gaussian_process.gpr` and
@@ -87,6 +87,9 @@ class BayesianOptimizer(BaseAlgorithm):
            from the space of allowed theta-values. If greater than 0, all bounds
            must be finite. Note that n_restarts_optimizer == 0 implies that one
            run is performed.
+        noise: str (default: "gaussian")
+           If set to "gaussian", then it is assumed that y is a noisy estimate of f(x) where the
+           noise is gaussian.
         normalize_y : bool (default: False)
            Whether the target values y are normalized, i.e., the mean of the
            observed target values become zero. This parameter should be set to
@@ -105,6 +108,7 @@ class BayesianOptimizer(BaseAlgorithm):
                                                 acq_func=acq_func,
                                                 alpha=alpha,
                                                 n_restarts_optimizer=n_restarts_optimizer,
+                                                noise=noise,
                                                 normalize_y=normalize_y)
         self.optimizer = None
 
@@ -132,8 +136,8 @@ class BayesianOptimizer(BaseAlgorithm):
     def _init_optimizer(self):
         if self.optimizer is None:
             self.optimizer = Optimizer(
-                base_estimator=GaussianProcessRegressor(alpha=self.alpha,
-                                                        n_restarts_optimizer=self.n_restarts_optimizer,
-                                                        normalize_y=self.normalize_y),
+                base_estimator=GaussianProcessRegressor(
+                    alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
+                    noise=self.noise, normalize_y=self.normalize_y),
                 dimensions=convert_orion_space_to_skopt_space(self.space),
                 n_initial_points=self.n_initial_points, acq_func=self.acq_func)
