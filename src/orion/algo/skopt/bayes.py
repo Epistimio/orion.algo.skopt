@@ -43,7 +43,7 @@ def convert_orion_space_to_skopt_space(orion_space):
 class BayesianOptimizer(BaseAlgorithm):
     """Wrapper skopt's bayesian optimizer"""
 
-    requires = 'real'
+    requires = 'linear'
 
     def __init__(self, space,
                  strategy='cl_min', n_initial_points=10, acq_func="gp_hedge",
