@@ -24,9 +24,6 @@ def convert_orion_space_to_skopt_space(orion_space):
         #  low = dimension._args[0]
         #  high = low + dimension._args[1]
         low, high = dimension.interval()
-        # NOTE: A hack, because orion priors have non-inclusive higher bound
-        #       while scikit-optimizer have inclusive ones.
-        high = numpy.nextafter(high, high - 1)
         shape = dimension.shape
         assert not shape or len(shape) == 1
         if not shape:
