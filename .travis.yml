@@ -27,9 +27,6 @@ jobs:
       python: 3.7
       dist: xenial
       sudo: true
-    - <<: *test
-      env: TOXENV=demo_random
-      python: 3.6
     - stage: packaging
       env: TOXENV=packaging
       python: 3.6
