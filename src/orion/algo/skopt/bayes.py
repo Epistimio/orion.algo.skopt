@@ -17,7 +17,7 @@ from orion.algo.base import BaseAlgorithm
 from orion.algo.space import (pack_point, unpack_point)
 
 
-def convert_orion_space_to_skopt_space(orion_space):
+def orion_space_to_skopt_space(orion_space):
     """Convert Oríon's definition of problem's domain to a skopt compatible."""
     dimensions = []
     for key, dimension in orion_space.items():
@@ -26,6 +26,7 @@ def convert_orion_space_to_skopt_space(orion_space):
         low, high = dimension.interval()
         # NOTE: A hack, because orion priors have non-inclusive higher bound
         #       while scikit-optimizer have inclusive ones.
+        # pylint: disable = assignment-from-no-return
         high = numpy.nextafter(high, high - 1)
         shape = dimension.shape
         assert not shape or len(shape) == 1
@@ -45,6 +46,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
     requires = 'real'
 
+    # pylint: disable = too-many-arguments
     def __init__(self, space,
                  strategy='cl_min', n_initial_points=10, acq_func="gp_hedge",
                  alpha=1e-10, n_restarts_optimizer=0, noise='gaussian', normalize_y=False):
@@ -139,5 +141,5 @@ class BayesianOptimizer(BaseAlgorithm):
                 base_estimator=GaussianProcessRegressor(
                     alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
                     noise=self.noise, normalize_y=self.normalize_y),
-                dimensions=convert_orion_space_to_skopt_space(self.space),
+                dimensions=orion_space_to_skopt_space(self.space),
                 n_initial_points=self.n_initial_points, acq_func=self.acq_func)
