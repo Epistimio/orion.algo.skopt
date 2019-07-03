@@ -14,7 +14,7 @@ from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
 
 from orion.algo.base import BaseAlgorithm
-from orion.algo.space import (pack_point, unpack_point)
+from orion.algo.space import (check_random_state, pack_point, unpack_point)
 
 
 def orion_space_to_skopt_space(orion_space):
@@ -112,7 +112,31 @@ class BayesianOptimizer(BaseAlgorithm):
                                                 n_restarts_optimizer=n_restarts_optimizer,
                                                 noise=noise,
                                                 normalize_y=normalize_y)
-        self.optimizer = None
+        self._init_optimizer()
+
+    def seed_rng(self, seed):
+        """Seed the state of the random number generator.
+
+        :param seed: Integer seed for the random number generator.
+        """
+        self.optimizer.rng.seed(seed)
+        self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(0, 100000)
+
+    @property
+    def state_dict(self):
+        """Return a state dict that can be used to reset the state of the algorithm."""
+        return {'optimizer_rng_state': self.optimizer.rng.get_state(), 'estimator_rng_state':
+                check_random_state(self.optimizer.base_estimator_.random_state).get_state()}
+
+    def set_state(self, state_dict):
+        """Reset the state of the algorithm based on the given state_dict
+
+        :param state_dict: Dictionary representing state of an algorithm
+        """
+        self.optimizer.rng.set_state(state_dict['optimizer_rng_state'])
+        rng = numpy.random.RandomState(0)
+        rng.set_state(state_dict['estimator_rng_state'])
+        self.optimizer.base_estimator_.random_state = rng
 
     def suggest(self, num=1):
         """Suggest a `num`ber of new sets of parameters.
@@ -120,8 +144,9 @@ class BayesianOptimizer(BaseAlgorithm):
         Perform a step towards negative gradient and suggest that point.
 
         """
-        self._init_optimizer()
-        points = self.optimizer.ask(n_points=num, strategy=self.strategy)
+        if num > 1:
+            raise AttributeError("BayesianOptimizer does not support num > 1.")
+        points = [self.optimizer._ask()]
         return [pack_point(point, self.space) for point in points]
 
     def observe(self, points, results):
@@ -131,15 +156,13 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
-        self._init_optimizer()
         self.optimizer.tell([unpack_point(point, self.space) for point in points],
                             [r['objective'] for r in results])
 
     def _init_optimizer(self):
-        if self.optimizer is None:
-            self.optimizer = Optimizer(
-                base_estimator=GaussianProcessRegressor(
-                    alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
-                    noise=self.noise, normalize_y=self.normalize_y),
-                dimensions=orion_space_to_skopt_space(self.space),
-                n_initial_points=self.n_initial_points, acq_func=self.acq_func)
+        self.optimizer = Optimizer(
+            base_estimator=GaussianProcessRegressor(
+                alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
+                noise=self.noise, normalize_y=self.normalize_y),
+            dimensions=orion_space_to_skopt_space(self.space),
+            n_initial_points=self.n_initial_points, acq_func=self.acq_func)
