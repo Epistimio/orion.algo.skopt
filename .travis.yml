@@ -12,6 +12,7 @@ jobs:
     # Create alias named test for environments
     - &test
       stage: test
+      services: mongodb
       before_script:
         - sleep 15
         - mongo orion_test --eval 'db.createUser({user:"user",pwd:"pass",roles:["readWrite"]});'
