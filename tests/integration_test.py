@@ -133,6 +133,4 @@ def test_bayesian_optimizer_actually_optimize(database, monkeypatch):
 
     objective = exp.stats['best_evaluation']
 
-    print(objective)
     assert best_random_search > objective
-    assert 0
