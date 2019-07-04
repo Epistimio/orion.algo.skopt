@@ -146,7 +146,7 @@ class BayesianOptimizer(BaseAlgorithm):
         """
         if num > 1:
             raise AttributeError("BayesianOptimizer does not support num > 1.")
-        points = [self.optimizer._ask()]
+        points = [self.optimizer._ask()] # pylint: disable = protected-access
         return [pack_point(point, self.space) for point in points]
 
     def observe(self, points, results):

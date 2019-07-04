@@ -6,11 +6,11 @@ import os
 import numpy
 import pytest
 
-import orion.core.cli
-from orion.core.worker.trial import Trial
 from orion.algo.space import Integer, Real, Space
+import orion.core.cli
 from orion.core.io.experiment_builder import ExperimentBuilder
 from orion.core.worker.primary_algo import PrimaryAlgo
+from orion.core.worker.trial import Trial
 
 
 @pytest.fixture(scope='session')
@@ -133,4 +133,6 @@ def test_bayesian_optimizer_actually_optimize(database, monkeypatch):
 
     objective = exp.stats['best_evaluation']
 
+    print(objective)
     assert best_random_search > objective
+    assert 0
