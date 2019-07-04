@@ -9,6 +9,7 @@ import pytest
 import orion.core.cli
 from orion.core.worker.trial import Trial
 from orion.algo.space import Integer, Real, Space
+from orion.core.io.experiment_builder import ExperimentBuilder
 from orion.core.worker.primary_algo import PrimaryAlgo
 
 
@@ -116,3 +117,20 @@ def test_bayesian_optimizer_two_inputs(database, monkeypatch):
                          "./orion_config_bayes.yaml", "./rosenbrock.py",
                          "-x~uniform(-5, 5)", "-y~uniform(-10, 10)"])
     present_results(database, "orion_skopt_bayes_test")
+
+
+@pytest.mark.usefixtures("clean_db")
+def test_bayesian_optimizer_actually_optimize(database, monkeypatch):
+    """Check if Bayesian Optimizer has better optimization than random search."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+    best_random_search = 23.403275057472825
+    orion.core.cli.main(["hunt", "--max-trials", "40", "--config",
+                         "./orion_config_bayes.yaml", "./black_box.py",
+                         "-x~uniform(-50, 50)"])
+
+    with open("./orion_config_bayes.yaml", "r") as f:
+        exp = ExperimentBuilder().build_view_from({'config': f})
+
+    objective = exp.stats['best_evaluation']
+
+    assert best_random_search > objective
