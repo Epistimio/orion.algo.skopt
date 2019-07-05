@@ -10,7 +10,6 @@ from orion.algo.space import Integer, Real, Space
 import orion.core.cli
 from orion.core.io.experiment_builder import ExperimentBuilder
 from orion.core.worker.primary_algo import PrimaryAlgo
-from orion.core.worker.trial import Trial
 
 
 @pytest.fixture(scope='session')
@@ -32,36 +31,6 @@ def clean_db(database):
     database.resources.drop()
 
 
-def present_results(database, exp_name):
-    """Present 10 best trials in order from `exp_name`."""
-    exp = list(database.experiments.find({'name': exp_name}))
-    assert len(exp) == 1
-    exp = exp[0]
-    assert '_id' in exp
-    exp_id = exp['_id']
-    ctrials = list(database.trials.find({'experiment': exp_id, 'status': 'completed'}))
-    losses = []
-    trials = []
-    for trial in ctrials:
-        trial = Trial(**trial)
-        trials.append(trial)
-        losses.append(trial.objective.value)
-    ctrials = trials
-    losses = numpy.asarray(losses)
-    idx = list(range(len(ctrials)))
-    idx.sort(key=lambda x: losses[x])
-    losses = losses[idx].tolist()
-    ctrials[:] = [ctrials[i] for i in idx]
-    loss_per_trial = zip(losses, ctrials)
-
-    print("###           Top 10/{} Trials           ###".format(len(ctrials)))
-    print("###    Loss  ---  Trial  ---  End Time    ###")
-    for i, (loss, trial) in enumerate(loss_per_trial):
-        if i == 10:
-            break
-        print(loss, trial, trial.end_time)
-
-
 @pytest.fixture()
 def space():
     """Return an optimization space"""
@@ -76,27 +45,27 @@ def space():
 
 def test_seeding(space):
     """Verify that seeding makes sampling deterministic"""
-    random_search = PrimaryAlgo(space, 'bayesianoptimizer')
+    bayesian_search = PrimaryAlgo(space, 'bayesianoptimizer')
 
-    random_search.seed_rng(1)
-    a = random_search.suggest(1)[0]
-    assert not numpy.allclose(a, random_search.suggest(1)[0])
+    bayesian_search.seed_rng(1)
+    a = bayesian_search.suggest(1)[0]
+    assert not numpy.allclose(a, bayesian_search.suggest(1)[0])
 
-    random_search.seed_rng(1)
-    assert numpy.allclose(a, random_search.suggest(1)[0])
+    bayesian_search.seed_rng(1)
+    assert numpy.allclose(a, bayesian_search.suggest(1)[0])
 
 
 def test_set_state(space):
     """Verify that resetting state makes sampling deterministic"""
-    random_search = PrimaryAlgo(space, 'bayesianoptimizer')
+    bayesian_search = PrimaryAlgo(space, 'bayesianoptimizer')
 
-    random_search.seed_rng(1)
-    state = random_search.state_dict
-    a = random_search.suggest(1)[0]
-    assert not numpy.allclose(a, random_search.suggest(1)[0])
+    bayesian_search.seed_rng(1)
+    state = bayesian_search.state_dict
+    a = bayesian_search.suggest(1)[0]
+    assert not numpy.allclose(a, bayesian_search.suggest(1)[0])
 
-    random_search.set_state(state)
-    assert numpy.allclose(a, random_search.suggest(1)[0])
+    bayesian_search.set_state(state)
+    assert numpy.allclose(a, bayesian_search.suggest(1)[0])
 
 
 @pytest.mark.usefixtures("clean_db")
@@ -106,7 +75,6 @@ def test_bayesian_optimizer(database, monkeypatch):
     orion.core.cli.main(["hunt", "--config",
                          "./orion_config_bayes.yaml", "./rosenbrock.py",
                          "-x~uniform(-5, 5)"])
-    present_results(database, "orion_skopt_bayes_test")
 
 
 @pytest.mark.usefixtures("clean_db")
@@ -116,7 +84,6 @@ def test_bayesian_optimizer_two_inputs(database, monkeypatch):
     orion.core.cli.main(["hunt", "--config",
                          "./orion_config_bayes.yaml", "./rosenbrock.py",
                          "-x~uniform(-5, 5)", "-y~uniform(-10, 10)"])
-    present_results(database, "orion_skopt_bayes_test")
 
 
 @pytest.mark.usefixtures("clean_db")

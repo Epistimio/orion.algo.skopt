@@ -48,7 +48,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
     # pylint: disable = too-many-arguments
     def __init__(self, space,
-                 strategy='cl_min', n_initial_points=10, acq_func="gp_hedge",
+                 strategy=None, n_initial_points=10, acq_func="gp_hedge",
                  alpha=1e-10, n_restarts_optimizer=0, noise='gaussian', normalize_y=False):
         """Initialize skopt's BayesianOptimizer.
 
@@ -104,6 +104,9 @@ class BayesianOptimizer(BaseAlgorithm):
            About optional arguments passed to `skopt.learning.GaussianProcessRegressor`.
 
         """
+        if strategy is not None:
+            print("Strategy is deprecated and will be removed in v0.1.2.")
+
         super(BayesianOptimizer, self).__init__(space,
                                                 strategy=strategy,
                                                 n_initial_points=n_initial_points,

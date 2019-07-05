@@ -1,9 +1,0 @@
-algorithms: random
-
-pool_size: 1
-max_trials: 200
-
-database:
-    host: localhost
-    name: orion_test
-    type: mongodb
