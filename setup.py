@@ -9,6 +9,7 @@ setup_args = dict(
     name='orion.algo.skopt',
     version=0.1,
     description="Implement a wrapper for skopt optimizers.",
+    long_description="Implement a wrapper for skopt optimizers",
     license='BSD-3-Clause',
     author='Xavier Bouthillier',
     author_email='xavier.bouthillier@umontreal.ca',
