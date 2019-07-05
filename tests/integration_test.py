@@ -45,27 +45,27 @@ def space():
 
 def test_seeding(space):
     """Verify that seeding makes sampling deterministic"""
-    bayesian_search = PrimaryAlgo(space, 'bayesianoptimizer')
+    bayesian_optimizer = PrimaryAlgo(space, 'bayesianoptimizer')
 
-    bayesian_search.seed_rng(1)
-    a = bayesian_search.suggest(1)[0]
-    assert not numpy.allclose(a, bayesian_search.suggest(1)[0])
+    bayesian_optimizer.seed_rng(1)
+    a = bayesian_optimizer.suggest(1)[0]
+    assert not numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
 
-    bayesian_search.seed_rng(1)
-    assert numpy.allclose(a, bayesian_search.suggest(1)[0])
+    bayesian_optimizer.seed_rng(1)
+    assert numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
 
 
 def test_set_state(space):
     """Verify that resetting state makes sampling deterministic"""
-    bayesian_search = PrimaryAlgo(space, 'bayesianoptimizer')
+    bayesian_optimizer = PrimaryAlgo(space, 'bayesianoptimizer')
 
-    bayesian_search.seed_rng(1)
-    state = bayesian_search.state_dict
-    a = bayesian_search.suggest(1)[0]
-    assert not numpy.allclose(a, bayesian_search.suggest(1)[0])
+    bayesian_optimizer.seed_rng(1)
+    state = bayesian_optimizer.state_dict
+    a = bayesian_optimizer.suggest(1)[0]
+    assert not numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
 
-    bayesian_search.set_state(state)
-    assert numpy.allclose(a, bayesian_search.suggest(1)[0])
+    bayesian_optimizer.set_state(state)
+    assert numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
 
 
 @pytest.mark.usefixtures("clean_db")

@@ -8,6 +8,8 @@
    :synopsis: Use Gaussian Process regression to locally search for a minimum.
 
 """
+import logging
+
 import numpy
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
@@ -15,6 +17,9 @@ from skopt.space import Real
 
 from orion.algo.base import BaseAlgorithm
 from orion.algo.space import (check_random_state, pack_point, unpack_point)
+
+
+log = logging.getLogger(__name__)
 
 
 def orion_space_to_skopt_space(orion_space):
@@ -105,7 +110,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
         """
         if strategy is not None:
-            print("Strategy is deprecated and will be removed in v0.1.2.")
+            log.warning("Strategy is deprecated and will be removed in v0.1.2.")
 
         super(BayesianOptimizer, self).__init__(space,
                                                 strategy=strategy,
