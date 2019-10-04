@@ -2,6 +2,8 @@
 include LICENSE
 include *.rst
 
+# Control and setup helpers
+
 # Exclude development helpers
 exclude .travis.yml
 exclude tox.ini
@@ -10,7 +12,13 @@ exclude .pylintrc
 exclude codecov.yml
 exclude .mailmap
 
-# Include src, tests
-recursive-include *.rst *.py *.gitkeep
+# Include src, tests, docs
+recursive-include docs *.rst *.py *.gitkeep
+include docs/requirements.txt
+prune docs/build
+prune docs/src/reference
 recursive-include src *.py
-recursive-include tests *.py *.yaml *.txt
+recursive-include tests *.py *.yaml *.json *.txt *.yml *.in LICENSE
+include tests/requirements.txt
+include versioneer.py
+include src/orion/algo/skopt/_version.py
