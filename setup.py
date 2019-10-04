@@ -17,7 +17,7 @@ setup_args = dict(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description="Implement a wrapper for skopt optimizers.",
-    long_description=open(os.path.join(repo_root, "README.rst")).read(),
+    long_description=open(os.path.join(repo_root, "README.rst"), 'rt', encoding='utf8').read(),
     license='BSD-3-Clause',
     author=u'Epistímio',
     author_email='xavier.bouthillier@umontreal.ca',
