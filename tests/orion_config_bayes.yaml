@@ -1,0 +1,20 @@
+name: orion_skopt_bayes_test
+
+pool_size: 1
+max_trials: 5
+
+algorithms:
+  BayesianOptimizer:
+    seed: 1
+    n_initial_points: 10
+    acq_func: gp_hedge
+    alpha: 1.0e-10
+    n_restarts_optimizer: 0
+    noise: null
+    normalize_y: false
+
+
+database:
+  type: 'mongodb'
+  name: 'orion_test'
+  host: 'mongodb://user:pass@localhost'
