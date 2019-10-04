@@ -52,7 +52,7 @@ class BayesianOptimizer(BaseAlgorithm):
     requires = 'real'
 
     # pylint: disable = too-many-arguments
-    def __init__(self, space,
+    def __init__(self, space, seed=None,
                  strategy=None, n_initial_points=10, acq_func="gp_hedge",
                  alpha=1e-10, n_restarts_optimizer=0, noise='gaussian', normalize_y=False):
         """Initialize skopt's BayesianOptimizer.
@@ -64,6 +64,8 @@ class BayesianOptimizer(BaseAlgorithm):
         ----------
         space : `orion.algo.space.Space`
            Problem's definition
+        seed: int (default: None)
+           Seed used for the random number generator
         strategy : str (default: cl_min)
            Method to use to sample multiple points.
            Supported options are `"cl_min"`, `"cl_mean"` or `"cl_max"`.
@@ -112,7 +114,15 @@ class BayesianOptimizer(BaseAlgorithm):
         if strategy is not None:
             log.warning("Strategy is deprecated and will be removed in v0.1.2.")
 
+        self.optimizer = Optimizer(
+            base_estimator=GaussianProcessRegressor(
+                alpha=alpha, n_restarts_optimizer=n_restarts_optimizer,
+                noise=noise, normalize_y=normalize_y),
+            dimensions=orion_space_to_skopt_space(space),
+            n_initial_points=n_initial_points, acq_func=acq_func)
+
         super(BayesianOptimizer, self).__init__(space,
+                                                seed=seed,
                                                 strategy=strategy,
                                                 n_initial_points=n_initial_points,
                                                 acq_func=acq_func,
@@ -120,7 +130,6 @@ class BayesianOptimizer(BaseAlgorithm):
                                                 n_restarts_optimizer=n_restarts_optimizer,
                                                 noise=noise,
                                                 normalize_y=normalize_y)
-        self._init_optimizer()
 
     def seed_rng(self, seed):
         """Seed the state of the random number generator.
@@ -166,11 +175,3 @@ class BayesianOptimizer(BaseAlgorithm):
         """
         self.optimizer.tell([unpack_point(point, self.space) for point in points],
                             [r['objective'] for r in results])
-
-    def _init_optimizer(self):
-        self.optimizer = Optimizer(
-            base_estimator=GaussianProcessRegressor(
-                alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
-                noise=self.noise, normalize_y=self.normalize_y),
-            dimensions=orion_space_to_skopt_space(self.space),
-            n_initial_points=self.n_initial_points, acq_func=self.acq_func)
