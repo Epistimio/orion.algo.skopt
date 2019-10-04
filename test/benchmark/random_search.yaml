@@ -1,0 +1,4 @@
+algorithms: null
+
+database:
+  type: 'EphemeralDB'

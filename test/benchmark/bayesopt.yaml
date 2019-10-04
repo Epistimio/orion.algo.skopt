@@ -1,0 +1,12 @@
+algorithms:
+  BayesianOptimizer:
+    strategy: cl_min
+    n_initial_points: 20
+    acq_func: gp_hedge
+    alpha: 1.0e-10
+    n_restarts_optimizer: 0
+    normalize_y: false
+
+
+database:
+  type: 'EphemeralDB'
