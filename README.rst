@@ -42,7 +42,7 @@ For more information, you can find the documentation `here`_.
 Installation
 ============
 
-You can install "orion.algo.skopt" via `pip`_ from `PyPI`_::
+You can install "orion.algo.skopt" via pip from PyPI::
 
     $ pip install orion.algo.skopt
 
