@@ -5,7 +5,7 @@ max_trials: 5
 
 algorithms:
   BayesianOptimizer:
-    seed: 1
+    seed: 2
     n_initial_points: 10
     acq_func: gp_hedge
     alpha: 1.0e-10
