@@ -114,12 +114,7 @@ class BayesianOptimizer(BaseAlgorithm):
         if strategy is not None:
             log.warning("Strategy is deprecated and will be removed in v0.1.2.")
 
-        self.optimizer = Optimizer(
-            base_estimator=GaussianProcessRegressor(
-                alpha=alpha, n_restarts_optimizer=n_restarts_optimizer,
-                noise=noise, normalize_y=normalize_y),
-            dimensions=orion_space_to_skopt_space(space),
-            n_initial_points=n_initial_points, acq_func=acq_func)
+        self._optimizer = None
 
         super(BayesianOptimizer, self).__init__(space,
                                                 seed=seed,
@@ -131,13 +126,30 @@ class BayesianOptimizer(BaseAlgorithm):
                                                 noise=noise,
                                                 normalize_y=normalize_y)
 
+    @property
+    def optimizer(self):
+        """Return skopt's optimizer."""
+        if self._optimizer is None:
+            self._optimizer = Optimizer(
+                base_estimator=GaussianProcessRegressor(
+                    alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
+                    noise=self.noise, normalize_y=self.normalize_y),
+                dimensions=orion_space_to_skopt_space(self.space),
+                n_initial_points=self.n_initial_points, acq_func=self.acq_func)
+
+            self.seed_rng(self.seed)
+
+        return self._optimizer
+
     def seed_rng(self, seed):
         """Seed the state of the random number generator.
 
         :param seed: Integer seed for the random number generator.
         """
-        self.optimizer.rng.seed(seed)
-        self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(0, 100000)
+        self.seed = seed
+        if self._optimizer:
+            self.optimizer.rng.seed(seed)
+            self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(0, 100000)
 
     @property
     def state_dict(self):

@@ -78,6 +78,24 @@ def test_bayesian_optimizer(database, monkeypatch):
 
 
 @pytest.mark.usefixtures("clean_db")
+def test_int(database, monkeypatch):
+    """Check support of integer values."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+    orion.core.cli.main(["hunt", "--config",
+                         "./orion_config_bayes.yaml", "./rosenbrock.py",
+                         "-x~uniform(-5, 5, discrete=True)"])
+
+
+@pytest.mark.usefixtures("clean_db")
+def test_categorical(database, monkeypatch):
+    """Check support of categorical values."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+    orion.core.cli.main(["hunt", "--config",
+                         "./orion_config_bayes.yaml", "./rosenbrock.py",
+                         "-x~choices([-5, -2, 0, 2, 5])"])
+
+
+@pytest.mark.usefixtures("clean_db")
 def test_bayesian_optimizer_two_inputs(database, monkeypatch):
     """Check functionality of BayesianOptimizer wrapper for 2 dimensions."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
