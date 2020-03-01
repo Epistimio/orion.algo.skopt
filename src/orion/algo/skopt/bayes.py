@@ -8,6 +8,8 @@
    :synopsis: Use Gaussian Process regression to locally search for a minimum.
 
 """
+import hashlib
+
 import numpy
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
@@ -111,6 +113,8 @@ class BayesianOptimizer(BaseAlgorithm):
                                                 noise=noise,
                                                 normalize_y=normalize_y)
         self.optimizer = None
+        self.trial_info = {}  # Stores Unique Trial -> Result
+        self.cardinality = space.cardinality
 
     def suggest(self, num=1):
         """Suggest a `num`ber of new sets of parameters.
@@ -132,6 +136,20 @@ class BayesianOptimizer(BaseAlgorithm):
         self._init_optimizer()
         self.optimizer.tell([unpack_point(point, self.space) for point in points],
                             [r['objective'] for r in results])
+
+        for point, result in zip(points, results):
+            _point = list(point)
+            _id = hashlib.md5(str(_point).encode('utf-8')).hexdigest()
+
+            if _id not in self.trial_info:
+                self.trial_info[_id] = result
+
+    @property
+    def is_done(self):
+        """Return True, if all possible sets of parameters has been tried."""
+        if len(self.trial_info) >= self.cardinality:
+            return True
+        return False
 
     def _init_optimizer(self):
         if self.optimizer is None:
