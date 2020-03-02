@@ -1,18 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """Installation script for `orion.algo.skopt`."""
+import os
+
 from setuptools import setup
+
+import versioneer
+
+
+repo_root = os.path.dirname(os.path.abspath(__file__))
 
 tests_require = ['pytest>=3.0.0']
 
 setup_args = dict(
     name='orion.algo.skopt',
-    version=0.1,
+    version=versioneer.get_version(),
+    cmdclass=versioneer.get_cmdclass(),
     description="Implement a wrapper for skopt optimizers.",
+    long_description=open(os.path.join(repo_root, "README.rst"), 'rt', encoding='utf8').read(),
     license='BSD-3-Clause',
-    author='Xavier Bouthillier',
+    author=u'Epistímio',
     author_email='xavier.bouthillier@umontreal.ca',
-    url='https://github.com/bouthilx/orion.algo.skopt',
+    url='https://github.com/Epistimio/orion.algo.skopt',
     packages=['orion.algo.skopt'],
     package_dir={'': 'src'},
     include_package_data=True,
@@ -21,7 +30,7 @@ setup_args = dict(
             'skopt_bayes = orion.algo.skopt.bayes:BayesianOptimizer'
             ],
         },
-    install_requires=['orion.core', 'scikit-optimize>=0.5.1'],
+    install_requires=['orion>=0.1.6', 'scikit-optimize>=0.5.1'],
     tests_require=tests_require,
     setup_requires=['setuptools', 'pytest-runner>=2.0,<3dev'],
     extras_require=dict(test=tests_require),
@@ -51,7 +60,7 @@ setup_args['classifiers'] = [
     'Topic :: Scientific/Engineering',
     'Topic :: Scientific/Engineering :: Artificial Intelligence',
 ] + [('Programming Language :: Python :: %s' % x)
-     for x in '3 3.4 3.5 3.6'.split()]
+     for x in '3 3.5 3.6 3.7'.split()]
 
 if __name__ == '__main__':
     setup(**setup_args)

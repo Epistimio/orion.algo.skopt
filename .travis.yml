@@ -1,0 +1,41 @@
+sudo: false
+language: python
+
+jobs:
+  include:
+    - stage: pretest
+      env: TOXENV=flake8
+      python: 3.6
+    - env: TOXENV=pylint
+      python: 3.6
+
+    # Create alias named test for environments
+    - &test
+      stage: test
+      services: mongodb
+      before_script:
+        - sleep 15
+        - mongo orion_test --eval 'db.createUser({user:"user",pwd:"pass",roles:["readWrite"]});'
+      after-success:
+        - tox -e final-coverage
+        - tox -e codecov
+      env: TOXENV=py35
+      python: 3.5
+
+    # Reuse the test stage setup with a different environment each time
+    - <<: *test
+      env: TOXENV=py36
+      python: 3.6
+    - <<: *test
+      env: TOXENV=py37
+      python: 3.7
+      dist: xenial
+      sudo: true
+    - stage: packaging
+      env: TOXENV=packaging
+      python: 3.6
+
+install:
+  - pip install tox
+script:
+  - tox
