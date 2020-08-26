@@ -30,7 +30,7 @@ setup_args = dict(
             'skopt_bayes = orion.algo.skopt.bayes:BayesianOptimizer'
             ],
         },
-    install_requires=['orion>=0.1.6', 'scikit-optimize>=0.5.1'],
+    install_requires=['orion>=0.1.8', 'scikit-optimize>=0.5.1'],
     tests_require=tests_require,
     setup_requires=['setuptools', 'pytest-runner>=2.0,<3dev'],
     extras_require=dict(test=tests_require),
