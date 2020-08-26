@@ -7,28 +7,9 @@ import numpy
 import orion.core.cli
 import pytest
 from orion.algo.space import Integer, Real, Space
-from orion.core.io.experiment_builder import ExperimentBuilder
+from orion.client import create_experiment
 from orion.core.worker.primary_algo import PrimaryAlgo
-
-
-@pytest.fixture(scope="session")
-def database():
-    """Return Mongo database object to test with example entries."""
-    from pymongo import MongoClient
-
-    client = MongoClient(username="user", password="pass", authSource="orion_test")
-    database = client.orion_test
-    yield database
-    client.close()
-
-
-@pytest.fixture()
-def clean_db(database):
-    """Clean insert example experiment entries to collections."""
-    database.experiments.drop()
-    database.trials.drop()
-    database.workers.drop()
-    database.resources.drop()
+from orion.testing import OrionState
 
 
 @pytest.fixture()
@@ -68,87 +49,106 @@ def test_set_state(space):
     assert numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_bayesian_optimizer(database, monkeypatch):
+def test_bayesian_optimizer_basic(monkeypatch):
     """Check functionality of BayesianOptimizer wrapper for single shaped dimension."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
-    orion.core.cli.main(
-        [
-            "hunt",
-            "--config",
-            "./orion_config_bayes.yaml",
-            "./rosenbrock.py",
-            "-x~uniform(-5, 5)",
-        ]
-    )
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~uniform(-5, 5)",
+            ]
+        )
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_int(database, monkeypatch):
+def test_int(monkeypatch):
     """Check support of integer values."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
-    orion.core.cli.main(
-        [
-            "hunt",
-            "--config",
-            "./orion_config_bayes.yaml",
-            "./rosenbrock.py",
-            "-x~uniform(-5, 5, discrete=True)",
-        ]
-    )
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--name",
+                "exp",
+                "--max-trials",
+                "5",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~uniform(-5, 5, discrete=True)",
+            ]
+        )
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_categorical(database, monkeypatch):
+def test_categorical(monkeypatch):
     """Check support of categorical values."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
-    orion.core.cli.main(
-        [
-            "hunt",
-            "--config",
-            "./orion_config_bayes.yaml",
-            "./rosenbrock.py",
-            "-x~choices([-5, -2, 0, 2, 5])",
-        ]
-    )
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--name",
+                "exp",
+                "--max-trials",
+                "5",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~choices([-5, -2, 0, 2, 5])",
+            ]
+        )
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_bayesian_optimizer_two_inputs(database, monkeypatch):
+def test_bayesian_optimizer_two_inputs(monkeypatch):
     """Check functionality of BayesianOptimizer wrapper for 2 dimensions."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
-    orion.core.cli.main(
-        [
-            "hunt",
-            "--config",
-            "./orion_config_bayes.yaml",
-            "./rosenbrock.py",
-            "-x~uniform(-5, 5)",
-            "-y~uniform(-10, 10)",
-        ]
-    )
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~uniform(-5, 5)",
+                "-y~uniform(-10, 10)",
+            ]
+        )
 
 
-@pytest.mark.usefixtures("clean_db")
-def test_bayesian_optimizer_actually_optimize(database, monkeypatch):
+def test_bayesian_optimizer_actually_optimize(monkeypatch):
     """Check if Bayesian Optimizer has better optimization than random search."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
     best_random_search = 23.403275057472825
-    orion.core.cli.main(
-        [
-            "hunt",
-            "--max-trials",
-            "40",
-            "--config",
-            "./orion_config_bayes.yaml",
-            "./black_box.py",
-            "-x~uniform(-50, 50)",
-        ]
-    )
 
-    with open("./orion_config_bayes.yaml", "r") as f:
-        exp = ExperimentBuilder().build_view_from({"config": f})
+    with OrionState(experiments=[], trials=[]):
 
-    objective = exp.stats["best_evaluation"]
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--name",
+                "exp",
+                "--max-trials",
+                "20",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./black_box.py",
+                "-x~uniform(-50, 50, precision=10)",
+            ]
+        )
 
-    assert best_random_search > objective
+        exp = create_experiment(name="exp")
+
+        objective = exp.stats["best_evaluation"]
+
+        assert best_random_search > objective
