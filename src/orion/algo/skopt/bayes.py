@@ -26,22 +26,18 @@ def orion_space_to_skopt_space(orion_space):
     """Convert Oríon's definition of problem's domain to a skopt compatible."""
     dimensions = []
     for key, dimension in orion_space.items():
-        #  low = dimension._args[0]
-        #  high = low + dimension._args[1]
         low, high = dimension.interval()
-        # NOTE: A hack, because orion priors have non-inclusive higher bound
-        #       while scikit-optimizer have inclusive ones.
-        # pylint: disable = assignment-from-no-return
-        high = numpy.nextafter(high, high - 1)
         shape = dimension.shape
         assert not shape or len(shape) == 1
         if not shape:
             shape = (1,)
+            low = (low, )
+            high = (high, )
         # Unpack dimension
         for i in range(shape[0]):
             dimensions.append(Real(name=key + '_' + str(i),
                                    prior='uniform',
-                                   low=low, high=high))
+                                   low=low[i], high=high[i]))
 
     return Space(dimensions)
 
