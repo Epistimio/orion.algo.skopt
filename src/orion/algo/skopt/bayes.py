@@ -16,7 +16,7 @@ from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
 
 from orion.algo.base import BaseAlgorithm
-from orion.algo.space import (check_random_state, pack_point, unpack_point)
+from orion.algo.space import check_random_state
 
 
 log = logging.getLogger(__name__)
