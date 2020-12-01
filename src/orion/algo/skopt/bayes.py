@@ -40,9 +40,9 @@ def orion_space_to_skopt_space(orion_space):
 class BayesianOptimizer(BaseAlgorithm):
     """Wrapper skopt's bayesian optimizer"""
 
-    type_requirement = "real"
-    dist_requirement = "linear"
-    shape_requirement = "flattened"
+    requires_type = "real"
+    requires_dist = "linear"
+    requires_shape = "flattened"
 
     # pylint: disable = too-many-arguments
     def __init__(

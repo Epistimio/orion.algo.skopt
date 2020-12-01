@@ -30,23 +30,24 @@ def test_seeding(space):
 
     bayesian_optimizer.seed_rng(1)
     a = bayesian_optimizer.suggest(1)[0]
-    assert not numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
+    with pytest.raises(AssertionError):
+        numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
 
     bayesian_optimizer.seed_rng(1)
-    assert numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
+    numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
 
 
 def test_set_state(space):
     """Verify that resetting state makes sampling deterministic"""
     bayesian_optimizer = PrimaryAlgo(space, "bayesianoptimizer")
 
-    bayesian_optimizer.seed_rng(1)
     state = bayesian_optimizer.state_dict
     a = bayesian_optimizer.suggest(1)[0]
-    assert not numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
+    with pytest.raises(AssertionError):
+        numpy.testing.equal(a, bayesian_optimizer.suggest(1)[0])
 
     bayesian_optimizer.set_state(state)
-    assert numpy.allclose(a, bayesian_optimizer.suggest(1)[0])
+    numpy.testing.equal(a, bayesian_optimizer.suggest(1)[0])
 
 
 def test_bayesian_optimizer_basic(monkeypatch):
