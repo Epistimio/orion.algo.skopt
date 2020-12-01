@@ -55,7 +55,7 @@ exclude =
     *.egg-info,
     .cache,
     .eggs,
-    src/orion/core/_version.py,
+    src/orion/algo/skopt/_version.py,
     src/orion/core/utils/_appdirs.py
 
 # Line length
