@@ -28,16 +28,14 @@ def orion_space_to_skopt_space(orion_space):
     for key, dimension in orion_space.items():
         low, high = dimension.interval()
         shape = dimension.shape
-        assert not shape or len(shape) == 1
+        assert not shape or shape == [1]
         if not shape:
             shape = (1,)
             low = (low, )
             high = (high, )
-        # Unpack dimension
-        for i in range(shape[0]):
-            dimensions.append(Real(name=key + '_' + str(i),
-                                   prior='uniform',
-                                   low=low[i], high=high[i]))
+        dimensions.append(Real(name=key,
+                               prior='uniform',
+                               low=low[0], high=high[0]))
 
     return Space(dimensions)
 
@@ -45,7 +43,9 @@ def orion_space_to_skopt_space(orion_space):
 class BayesianOptimizer(BaseAlgorithm):
     """Wrapper skopt's bayesian optimizer"""
 
-    requires = 'real'
+    type_requirement = 'real'
+    dist_requirement = 'linear'
+    shape_requirement = 'flattened'
 
     # pylint: disable = too-many-arguments
     def __init__(self, space, seed=None,
@@ -171,8 +171,8 @@ class BayesianOptimizer(BaseAlgorithm):
         """
         if num > 1:
             raise AttributeError("BayesianOptimizer does not support num > 1.")
-        points = [self.optimizer._ask()]  # pylint: disable = protected-access
-        return [pack_point(point, self.space) for point in points]
+
+        return [self.optimizer._ask()]  # pylint: disable = protected-access
 
     def observe(self, points, results):
         """Observe evaluation `results` corresponding to list of `points` in
@@ -181,5 +181,4 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
-        self.optimizer.tell([unpack_point(point, self.space) for point in points],
-                            [r['objective'] for r in results])
+        self.optimizer.tell(points, [r['objective'] for r in results])
