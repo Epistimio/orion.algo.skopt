@@ -24,9 +24,23 @@ def space():
     return space
 
 
+@pytest.fixture()
+def real_space():
+    """Return a real optimization space"""
+    space = Space()
+    dim1 = Real("yolo1", "uniform", -3, 6)
+    space.register(dim1)
+    dim2 = Real("yolo2", "uniform", 0, 1)
+    space.register(dim2)
+
+    return space
+
+
 def test_seeding(space):
     """Verify that seeding makes sampling deterministic"""
-    bayesian_optimizer = PrimaryAlgo(space, "bayesianoptimizer")
+    bayesian_optimizer = PrimaryAlgo(
+        space, {"bayesianoptimizer": {"n_initial_points": 3}}
+    )
 
     bayesian_optimizer.seed_rng(1)
     a = bayesian_optimizer.suggest(1)[0]
@@ -37,6 +51,41 @@ def test_seeding(space):
     numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
 
 
+def test_seeding_bo(space):
+    """Verify that seeding makes bayesian optimization deterministic"""
+    bayesian_optimizer = PrimaryAlgo(
+        space, {"bayesianoptimizer": {"n_initial_points": 3}}
+    )
+
+    bayesian_optimizer.seed_rng(1)
+    for i in range(5):
+        a = bayesian_optimizer.suggest(1)[0]
+        bayesian_optimizer.observe([a], [{"objective": i}])
+    with pytest.raises(AssertionError):
+        numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
+
+    # Same seed, should be equal
+    bayesian_optimizer = PrimaryAlgo(
+        space, {"bayesianoptimizer": {"n_initial_points": 3}}
+    )
+    bayesian_optimizer.seed_rng(1)
+    for i in range(5):
+        b = bayesian_optimizer.suggest(1)[0]
+        bayesian_optimizer.observe([b], [{"objective": i}])
+    numpy.testing.assert_equal(a, b)
+
+    # Not same seed, should diverge
+    bayesian_optimizer = PrimaryAlgo(
+        space, {"bayesianoptimizer": {"n_initial_points": 3}}
+    )
+    bayesian_optimizer.seed_rng(2)
+    for i in range(5):
+        c = bayesian_optimizer.suggest(1)[0]
+        bayesian_optimizer.observe([c], [{"objective": i}])
+    with pytest.raises(AssertionError):
+        numpy.testing.assert_equal(a, c)
+
+
 def test_set_state(space):
     """Verify that resetting state makes sampling deterministic"""
     bayesian_optimizer = PrimaryAlgo(space, "bayesianoptimizer")
@@ -44,10 +93,72 @@ def test_set_state(space):
     state = bayesian_optimizer.state_dict
     a = bayesian_optimizer.suggest(1)[0]
     with pytest.raises(AssertionError):
-        numpy.testing.equal(a, bayesian_optimizer.suggest(1)[0])
+        numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
 
     bayesian_optimizer.set_state(state)
-    numpy.testing.equal(a, bayesian_optimizer.suggest(1)[0])
+    numpy.testing.assert_equal(a, bayesian_optimizer.suggest(1)[0])
+
+
+def test_set_state_bo(real_space):
+    """Verify that resetting state during BO makes sampling deterministic"""
+    n_init = 3
+    optimizer = PrimaryAlgo(
+        real_space,
+        {
+            "bayesianoptimizer": {
+                "n_initial_points": 3,
+                "normalize_y": True,
+                "acq_func": "EI",
+                "noise": None,
+            }
+        },
+    )
+
+    for i in range(n_init + 2):
+        a = optimizer.suggest(1)[0]
+        if i < n_init:
+            assert getattr(optimizer.algorithm.optimizer, "_next_x", None) is None
+        optimizer.observe([a], [{"objective": i / (n_init + 2)}])
+
+    # Make sure we left random regime and are now doing sampling
+    assert optimizer.algorithm.optimizer._next_x is not None
+    assert optimizer.algorithm.optimizer._n_initial_points <= 0
+
+    # Make sure BO returns different samples during iterations
+    state = optimizer.state_dict
+    a = optimizer.suggest(1)[0]
+    optimizer.observe([a], [{"objective": i + 1 / (n_init + 3)}])
+
+    with pytest.raises(AssertionError):
+        numpy.testing.assert_equal(a, optimizer.suggest(1)[0])
+
+    # Reset state and make sure BO returns the same sample
+    optimizer.set_state(state)
+
+    assert optimizer.algorithm.optimizer._next_x is not None
+    assert optimizer.algorithm.optimizer._n_initial_points <= 0
+
+    numpy.testing.assert_equal(a, optimizer.suggest(1)[0])
+
+    # Test also when setting state to new optimizer, not old version.
+    new_optimizer = PrimaryAlgo(
+        real_space,
+        {
+            "bayesianoptimizer": {
+                "n_initial_points": 3,
+                "normalize_y": True,
+                "acq_func": "EI",
+                "noise": None,
+            }
+        },
+    )
+
+    new_optimizer.set_state(state)
+
+    assert new_optimizer.algorithm.optimizer._next_x is not None
+    assert new_optimizer.algorithm.optimizer._n_initial_points <= 0
+
+    numpy.testing.assert_equal(a, new_optimizer.suggest(1)[0])
 
 
 def test_bayesian_optimizer_basic(monkeypatch):
