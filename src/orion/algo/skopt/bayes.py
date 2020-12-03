@@ -11,13 +11,11 @@
 import logging
 
 import numpy
+from orion.algo.base import BaseAlgorithm
+from orion.algo.space import check_random_state, pack_point, unpack_point
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
-
-from orion.algo.base import BaseAlgorithm
-from orion.algo.space import (check_random_state, pack_point, unpack_point)
-
 
 log = logging.getLogger(__name__)
 
@@ -39,9 +37,9 @@ def orion_space_to_skopt_space(orion_space):
             shape = (1,)
         # Unpack dimension
         for i in range(shape[0]):
-            dimensions.append(Real(name=key + '_' + str(i),
-                                   prior='uniform',
-                                   low=low, high=high))
+            dimensions.append(
+                Real(name=key + "_" + str(i), prior="uniform", low=low, high=high)
+            )
 
     return Space(dimensions)
 
@@ -49,12 +47,21 @@ def orion_space_to_skopt_space(orion_space):
 class BayesianOptimizer(BaseAlgorithm):
     """Wrapper skopt's bayesian optimizer"""
 
-    requires = 'real'
+    requires = "real"
 
     # pylint: disable = too-many-arguments
-    def __init__(self, space, seed=None,
-                 strategy=None, n_initial_points=10, acq_func="gp_hedge",
-                 alpha=1e-10, n_restarts_optimizer=0, noise='gaussian', normalize_y=False):
+    def __init__(
+        self,
+        space,
+        seed=None,
+        strategy=None,
+        n_initial_points=10,
+        acq_func="gp_hedge",
+        alpha=1e-10,
+        n_restarts_optimizer=0,
+        noise="gaussian",
+        normalize_y=False,
+    ):
         """Initialize skopt's BayesianOptimizer.
 
         Copying documentation from `skopt.learning.gaussian_process.gpr` and
@@ -116,15 +123,17 @@ class BayesianOptimizer(BaseAlgorithm):
 
         self._optimizer = None
 
-        super(BayesianOptimizer, self).__init__(space,
-                                                seed=seed,
-                                                strategy=strategy,
-                                                n_initial_points=n_initial_points,
-                                                acq_func=acq_func,
-                                                alpha=alpha,
-                                                n_restarts_optimizer=n_restarts_optimizer,
-                                                noise=noise,
-                                                normalize_y=normalize_y)
+        super(BayesianOptimizer, self).__init__(
+            space,
+            seed=seed,
+            strategy=strategy,
+            n_initial_points=n_initial_points,
+            acq_func=acq_func,
+            alpha=alpha,
+            n_restarts_optimizer=n_restarts_optimizer,
+            noise=noise,
+            normalize_y=normalize_y,
+        )
 
     @property
     def optimizer(self):
@@ -132,10 +141,15 @@ class BayesianOptimizer(BaseAlgorithm):
         if self._optimizer is None:
             self._optimizer = Optimizer(
                 base_estimator=GaussianProcessRegressor(
-                    alpha=self.alpha, n_restarts_optimizer=self.n_restarts_optimizer,
-                    noise=self.noise, normalize_y=self.normalize_y),
+                    alpha=self.alpha,
+                    n_restarts_optimizer=self.n_restarts_optimizer,
+                    noise=self.noise,
+                    normalize_y=self.normalize_y,
+                ),
                 dimensions=orion_space_to_skopt_space(self.space),
-                n_initial_points=self.n_initial_points, acq_func=self.acq_func)
+                n_initial_points=self.n_initial_points,
+                acq_func=self.acq_func,
+            )
 
             self.seed_rng(self.seed)
 
@@ -149,22 +163,28 @@ class BayesianOptimizer(BaseAlgorithm):
         self.seed = seed
         if self._optimizer:
             self.optimizer.rng.seed(seed)
-            self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(0, 100000)
+            self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(
+                0, 100000
+            )
 
     @property
     def state_dict(self):
         """Return a state dict that can be used to reset the state of the algorithm."""
-        return {'optimizer_rng_state': self.optimizer.rng.get_state(), 'estimator_rng_state':
-                check_random_state(self.optimizer.base_estimator_.random_state).get_state()}
+        return {
+            "optimizer_rng_state": self.optimizer.rng.get_state(),
+            "estimator_rng_state": check_random_state(
+                self.optimizer.base_estimator_.random_state
+            ).get_state(),
+        }
 
     def set_state(self, state_dict):
         """Reset the state of the algorithm based on the given state_dict
 
         :param state_dict: Dictionary representing state of an algorithm
         """
-        self.optimizer.rng.set_state(state_dict['optimizer_rng_state'])
+        self.optimizer.rng.set_state(state_dict["optimizer_rng_state"])
         rng = numpy.random.RandomState(0)
-        rng.set_state(state_dict['estimator_rng_state'])
+        rng.set_state(state_dict["estimator_rng_state"])
         self.optimizer.base_estimator_.random_state = rng
 
     def suggest(self, num=1):
@@ -185,5 +205,7 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
-        self.optimizer.tell([unpack_point(point, self.space) for point in points],
-                            [r['objective'] for r in results])
+        self.optimizer.tell(
+            [unpack_point(point, self.space) for point in points],
+            [r["objective"] for r in results],
+        )
