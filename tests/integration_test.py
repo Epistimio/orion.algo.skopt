@@ -220,6 +220,48 @@ def test_categorical(monkeypatch):
         )
 
 
+def test_linear(monkeypatch):
+    """Check support of logarithmic distributions."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--name",
+                "exp",
+                "--max-trials",
+                "5",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~loguniform(1, 50, discrete=True)",
+            ]
+        )
+
+
+def test_shape(monkeypatch):
+    """Check support of multidim values."""
+    monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+    with OrionState(experiments=[], trials=[]):
+
+        orion.core.cli.main(
+            [
+                "hunt",
+                "--name",
+                "exp",
+                "--max-trials",
+                "5",
+                "--config",
+                "./orion_config_bayes.yaml",
+                "./rosenbrock.py",
+                "-x~uniform(-5, 5, shape=3)",
+            ]
+        )
+
+
 def test_bayesian_optimizer_two_inputs(monkeypatch):
     """Check functionality of BayesianOptimizer wrapper for 2 dimensions."""
     monkeypatch.chdir(os.path.dirname(os.path.abspath(__file__)))
