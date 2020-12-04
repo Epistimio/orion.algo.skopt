@@ -17,7 +17,6 @@ from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
 
-
 log = logging.getLogger(__name__)
 
 
