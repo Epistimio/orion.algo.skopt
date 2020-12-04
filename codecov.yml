@@ -1,0 +1,28 @@
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      # add more later when packages will be namespaced
+      default: false
+      # tests:
+      #   target: 100%
+      #   paths: tests
+      core:
+        # change this to more strict number and some allowance threshold later
+        target: auto
+        branches: null
+        paths:
+          - "src"
+
+    patch:
+      default:
+        branches: null
+
+    changes:
+      default:
+        branches: null
+
+comment: false
