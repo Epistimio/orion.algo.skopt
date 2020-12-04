@@ -12,7 +12,7 @@ import logging
 
 import numpy
 from orion.algo.base import BaseAlgorithm
-from orion.algo.space import check_random_state, pack_point, unpack_point
+from orion.algo.space import check_random_state
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
@@ -24,22 +24,14 @@ def orion_space_to_skopt_space(orion_space):
     """Convert Oríon's definition of problem's domain to a skopt compatible."""
     dimensions = []
     for key, dimension in orion_space.items():
-        #  low = dimension._args[0]
-        #  high = low + dimension._args[1]
         low, high = dimension.interval()
-        # NOTE: A hack, because orion priors have non-inclusive higher bound
-        #       while scikit-optimizer have inclusive ones.
-        # pylint: disable = assignment-from-no-return
-        high = numpy.nextafter(high, high - 1)
         shape = dimension.shape
-        assert not shape or len(shape) == 1
+        assert not shape or shape == [1]
         if not shape:
             shape = (1,)
-        # Unpack dimension
-        for i in range(shape[0]):
-            dimensions.append(
-                Real(name=key + "_" + str(i), prior="uniform", low=low, high=high)
-            )
+            low = (low,)
+            high = (high,)
+        dimensions.append(Real(name=key, prior="uniform", low=low[0], high=high[0]))
 
     return Space(dimensions)
 
@@ -47,7 +39,9 @@ def orion_space_to_skopt_space(orion_space):
 class BayesianOptimizer(BaseAlgorithm):
     """Wrapper skopt's bayesian optimizer"""
 
-    requires = "real"
+    requires_type = "real"
+    requires_dist = "linear"
+    requires_shape = "flattened"
 
     # pylint: disable = too-many-arguments
     def __init__(
@@ -121,7 +115,7 @@ class BayesianOptimizer(BaseAlgorithm):
         if strategy is not None:
             log.warning("Strategy is deprecated and will be removed in v0.1.2.")
 
-        self._optimizer = None
+        self.optimizer = None
 
         super(BayesianOptimizer, self).__init__(
             space,
@@ -136,32 +130,38 @@ class BayesianOptimizer(BaseAlgorithm):
         )
 
     @property
-    def optimizer(self):
-        """Return skopt's optimizer."""
-        if self._optimizer is None:
-            self._optimizer = Optimizer(
-                base_estimator=GaussianProcessRegressor(
-                    alpha=self.alpha,
-                    n_restarts_optimizer=self.n_restarts_optimizer,
-                    noise=self.noise,
-                    normalize_y=self.normalize_y,
-                ),
-                dimensions=orion_space_to_skopt_space(self.space),
-                n_initial_points=self.n_initial_points,
-                acq_func=self.acq_func,
-            )
+    def space(self):
+        """Return transformed space of the BO"""
+        return self._space
 
-            self.seed_rng(self.seed)
+    @space.setter
+    def space(self, space):
+        """Set the space of the BO and initialize it"""
+        self._space = space
+        self._initialize()
 
-        return self._optimizer
+    def _initialize(self):
+        """Initialize the optimizer once the space is transformed"""
+        self.optimizer = Optimizer(
+            base_estimator=GaussianProcessRegressor(
+                alpha=self.alpha,
+                n_restarts_optimizer=self.n_restarts_optimizer,
+                noise=self.noise,
+                normalize_y=self.normalize_y,
+            ),
+            dimensions=orion_space_to_skopt_space(self.space),
+            n_initial_points=self.n_initial_points,
+            acq_func=self.acq_func,
+        )
+
+        self.seed_rng(self.seed)
 
     def seed_rng(self, seed):
         """Seed the state of the random number generator.
 
         :param seed: Integer seed for the random number generator.
         """
-        self.seed = seed
-        if self._optimizer:
+        if self.optimizer:
             self.optimizer.rng.seed(seed)
             self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(
                 0, 100000
@@ -170,22 +170,48 @@ class BayesianOptimizer(BaseAlgorithm):
     @property
     def state_dict(self):
         """Return a state dict that can be used to reset the state of the algorithm."""
-        return {
-            "optimizer_rng_state": self.optimizer.rng.get_state(),
-            "estimator_rng_state": check_random_state(
-                self.optimizer.base_estimator_.random_state
-            ).get_state(),
-        }
+        state_dict = super(BayesianOptimizer, self).state_dict
+
+        if self.optimizer is None:
+            return state_dict
+
+        state_dict.update(
+            {
+                "optimizer_rng_state": self.optimizer.rng.get_state(),
+                "estimator_rng_state": check_random_state(
+                    self.optimizer.base_estimator_.random_state
+                ).get_state(),
+                "Xi": self.optimizer.Xi,
+                "yi": self.optimizer.yi,
+                # pylint: disable = protected-access
+                "_n_initial_points": self.optimizer._n_initial_points,
+                "gains_": getattr(self.optimizer, "gains_", None),
+                "models": self.optimizer.models,
+                "_next_x": getattr(self.optimizer, "_next_x", None),
+            }
+        )
+
+        return state_dict
 
     def set_state(self, state_dict):
         """Reset the state of the algorithm based on the given state_dict
 
         :param state_dict: Dictionary representing state of an algorithm
         """
-        self.optimizer.rng.set_state(state_dict["optimizer_rng_state"])
-        rng = numpy.random.RandomState(0)
-        rng.set_state(state_dict["estimator_rng_state"])
-        self.optimizer.base_estimator_.random_state = rng
+        super(BayesianOptimizer, self).set_state(state_dict)
+        if self.optimizer and "optimizer_rng_state" in state_dict:
+            self.optimizer.rng.set_state(state_dict["optimizer_rng_state"])
+            rng = numpy.random.RandomState(0)
+            rng.set_state(state_dict["estimator_rng_state"])
+            self.optimizer.base_estimator_.random_state = rng
+            self.optimizer.Xi = state_dict["Xi"]
+            self.optimizer.yi = state_dict["yi"]
+            # pylint: disable = protected-access
+            self.optimizer._n_initial_points = state_dict["_n_initial_points"]
+            self.optimizer.gains_ = state_dict["gains_"]
+            self.optimizer.models = state_dict["models"]
+            # pylint: disable = protected-access
+            self.optimizer._next_x = state_dict["_next_x"]
 
     def suggest(self, num=1):
         """Suggest a `num`ber of new sets of parameters.
@@ -195,8 +221,8 @@ class BayesianOptimizer(BaseAlgorithm):
         """
         if num > 1:
             raise AttributeError("BayesianOptimizer does not support num > 1.")
-        points = [self.optimizer._ask()]  # pylint: disable = protected-access
-        return [pack_point(point, self.space) for point in points]
+
+        return [self.optimizer._ask()]  # pylint: disable = protected-access
 
     def observe(self, points, results):
         """Observe evaluation `results` corresponding to list of `points` in
@@ -205,7 +231,4 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
-        self.optimizer.tell(
-            [unpack_point(point, self.space) for point in points],
-            [r["objective"] for r in results],
-        )
+        self.optimizer.tell(points, [r["objective"] for r in results])

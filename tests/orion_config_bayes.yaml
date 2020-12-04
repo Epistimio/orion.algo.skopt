@@ -13,7 +13,6 @@ algorithms:
     noise: null
     normalize_y: false
 
-
 database:
   type: 'mongodb'
   name: 'orion_test'
