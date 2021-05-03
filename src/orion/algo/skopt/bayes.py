@@ -137,6 +137,7 @@ class BayesianOptimizer(BaseAlgorithm):
     @space.setter
     def space(self, space):
         """Set the space of the BO and initialize it"""
+        self._original = self._space
         self._space = space
         self._initialize()
 
@@ -213,16 +214,81 @@ class BayesianOptimizer(BaseAlgorithm):
             # pylint: disable = protected-access
             self.optimizer._next_x = state_dict["_next_x"]
 
-    def suggest(self, num=1):
+    def suggest(self, num=None):
         """Suggest a `num`ber of new sets of parameters.
 
         Perform a step towards negative gradient and suggest that point.
 
         """
-        if num > 1:
-            raise AttributeError("BayesianOptimizer does not support num > 1.")
+        if num is None:
+            num = max(self.n_initial_points - self.n_observed, 1)
+        samples = []
+        candidates = []
+        while len(samples) < num:
+            if candidates:
+                candidate = candidates.pop(0)
+                if candidate:
+                    self.register(candidate)
+                    samples.append(candidate)
+            elif self.n_observed < self.n_initial_points:
+                candidates = self._suggest_random(num)
+            else:
+                candidates = self._suggest_bo(max(num - len(samples), 0))
 
-        return [self.optimizer._ask()]  # pylint: disable = protected-access
+            if not candidates:
+                break
+
+        return samples
+
+    def _suggest(self, num, function):
+        points = []
+
+        attempts = 0
+        max_attempts = 100
+        while len(points) < num and attempts < max_attempts:
+            for candidate in function(num - len(points)):
+                if not self.has_suggested(candidate):
+                    self.register(candidate)
+                    points.append(candidate)
+
+                if self.is_done:
+                    return points
+
+            attempts += 1
+            print(attempts)
+
+        return points
+
+    def _suggest_random(self, num):
+        def sample(num):
+            return self.space.sample(
+                num, seed=tuple(self.optimizer.rng.randint(0, 1000000, size=3))
+            )
+
+        return self._suggest(num, sample)
+
+    def _suggest_bo(self, num):
+        def suggest_bo(num):
+            point = self.optimizer._ask()  # pylint: disable = protected-access
+
+            # If already suggested, give corresponding result to BO to sample another point
+            if self.has_suggested(point):
+                result = self._trials_info[self.get_id(point)][1]
+                if result is None:
+                    results = []
+                    for other_point, other_result in self._trials_info.values():
+                        if other_result is not None:
+                            results.append(other_result["objective"])
+                    result = numpy.array(results).mean()
+                else:
+                    result = result["objective"]
+
+                self.optimizer.tell([point], [result])
+                return []
+
+            return [point]
+
+        return self._suggest(num, suggest_bo)
 
     def observe(self, points, results):
         """Observe evaluation `results` corresponding to list of `points` in
@@ -231,4 +297,28 @@ class BayesianOptimizer(BaseAlgorithm):
         Save current point and gradient corresponding to this point.
 
         """
-        self.optimizer.tell(points, [r["objective"] for r in results])
+        to_tell = [[], []]
+        for point, result in zip(points, results):
+            if not self.has_observed(point):
+                self.register(point, result)
+                to_tell[0].append(point)
+                to_tell[1].append(result["objective"])
+
+        if to_tell[0]:
+            self.optimizer.tell(*to_tell)
+
+    @property
+    def is_done(self):
+        """Whether the algorithm is done and will not make further suggestions.
+
+        Return True, if an algorithm holds that there can be no further improvement.
+        By default, the cardinality of the specified search space will be used to check
+        if all possible sets of parameters has been tried.
+        """
+        if self.n_suggested >= self._original.cardinality:
+            return True
+
+        if self.n_suggested >= getattr(self, "max_trials", float("inf")):
+            return True
+
+        return False
