@@ -220,8 +220,8 @@ class BayesianOptimizer(BaseAlgorithm):
         Perform a step towards negative gradient and suggest that point.
 
         """
-        if num is None:
-            num = max(self.n_initial_points - self.n_observed, 1)
+        num = min(num, max(self.n_initial_points - self.n_suggested, 1))
+
         samples = []
         candidates = []
         while len(samples) < num:
