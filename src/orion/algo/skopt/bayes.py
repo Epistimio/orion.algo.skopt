@@ -268,15 +268,17 @@ class BayesianOptimizer(BaseAlgorithm):
         return self._suggest(num, sample)
 
     def _suggest_bo(self, num):
+        # pylint: disable = unused-argument
         def suggest_bo(num):
-            point = self.optimizer._ask()  # pylint: disable = protected-access
+            # pylint: disable = protected-access
+            point = self.optimizer._ask()
 
             # If already suggested, give corresponding result to BO to sample another point
             if self.has_suggested(point):
                 result = self._trials_info[self.get_id(point)][1]
                 if result is None:
                     results = []
-                    for other_point, other_result in self._trials_info.values():
+                    for _, other_result in self._trials_info.values():
                         if other_result is not None:
                             results.append(other_result["objective"])
                     result = numpy.array(results).mean()
