@@ -9,7 +9,6 @@ import orion.core.cli
 import pytest
 from orion.testing.algo import BaseAlgoTests
 
-
 N_INIT = 10
 
 
