@@ -23,9 +23,9 @@ orion.algo.skopt
     :target: https://codecov.io/gh/Epistimio/orion.algo.skopt
     :alt: Codecov Report
 
-.. |travis| image:: https://travis-ci.org/Epistimio/orion.algo.skopt.svg?branch=master
-    :target: https://travis-ci.org/Epistimio/orion.algo.skopt
-    :alt: Travis tests
+.. |github-actions| image:: https://github.com/Epistimio/orion.algo.skopt/workflows/build/badge.svg?branch=master&event=pull_request
+    :target: https://github.com/Epistimio/orion.algo.skopt/actions?query=workflow:build+branch:master+event:schedule
+    :alt: Github actions tests
 
 
 This package is a plugin for `Oríon`_, providing a wrapper for `skopt`_ optimizers.
