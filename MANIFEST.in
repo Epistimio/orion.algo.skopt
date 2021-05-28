@@ -14,7 +14,7 @@ exclude .mailmap
 
 # Include src, tests, docs
 recursive-include docs *.rst *.py *.gitkeep
-include docs/requirements.txt
+include docs/test.sh
 prune docs/build
 prune docs/src/reference
 recursive-include src *.py
