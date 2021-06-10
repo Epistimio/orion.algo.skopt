@@ -89,9 +89,12 @@ jobs:
       uses: filipstefansson/uuid-action@v1
       with:
         name: ${{ github.sha }}
-    - name: Set tag with UUID
+    - name: Set tag with UUID and rebuild
       if: "!startsWith(github.ref, 'refs/tags')"
-      run: git tag "${{ steps.generate-uuid.outputs.uuid }}"
+      run: |
+          git tag "${{ steps.generate-uuid.outputs.uuid }}"
+          rm -rf build/
+          tox -e build
       # uses: actions/github-script@v3
       # with:
       #   github-token: ${{ github.token }}
@@ -102,6 +105,8 @@ jobs:
       #       ref: "refs/tags/${{ steps.generate-uuid.outputs.uuid }}",
       #       sha: context.sha
       #     })
+    - name: test secret
+      run : 'echo ${{ secrets.test_pypi_password }}'
     - name: Publish distribution 📦 to Test PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
