@@ -11,10 +11,11 @@ exclude *-requirements.txt
 exclude .pylintrc
 exclude codecov.yml
 exclude .mailmap
+exclude docs/src/_static/stub
+prune .github/
 
 # Include src, tests, docs
-recursive-include docs *.rst *.py *.gitkeep
-include docs/test.sh
+recursive-include docs *.rst *.py *.gitkeep *.txt
 prune docs/build
 prune docs/src/reference
 recursive-include src *.py

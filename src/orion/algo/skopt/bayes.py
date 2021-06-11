@@ -1,3 +1,4 @@
+# pylint: disable = no-name-in-module
 # -*- coding: utf-8 -*-
 """
 :mod:`orion.algo.skopt.bayes` -- Perform bayesian optimization
