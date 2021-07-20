@@ -1,7 +1,6 @@
-****************
-orion.algo.skopt
-****************
-
+=================================
+Scikit-optimize Wrapper for Oríon
+=================================
 
 .. |pypi| image:: https://img.shields.io/pypi/v/orion.algo.skopt
     :target: https://pypi.python.org/pypi/orion.algo.skopt
@@ -36,19 +35,21 @@ For more information, you can find the documentation `here`_.
 
 .. _Oríon: https://orion.readthedocs.io/en/latest
 
-.. _here: https://orion.readthedocs.io/en/latest/user/algorithms.html#bayesian-optimizer
+.. _here: https://orion.algo.skopt.readthedocs.io
 
 
 Installation
-============
+------------
 
-You can install "orion.algo.skopt" via pip from PyPI::
+You can install ``orion.algo.skopt`` via pip from PyPI
+
+.. code-block:: console
 
     $ pip install orion.algo.skopt
 
 
 Contribute or Ask
-=================
+-----------------
 
 Do you have a question or issues?
 Do you want to report a bug or suggest a feature? Name it!
@@ -61,7 +62,15 @@ Start by starring and forking our Github repo!
 
 Thanks for the support!
 
-License
-=======
+Citation
+--------
 
-The project is licensed under the BSD license.
+If you use this wrapper for your publications, please cite both
+`scikit-optimize <https://zenodo.org/record/4014775>`__
+and `Oríon <https://github.com/epistimio/orion#citation>`__.
+
+License
+-------
+
+Distributed under the terms of the BSD-3-Clause license,
+``orion.algo.skopt`` is free and open source software.
