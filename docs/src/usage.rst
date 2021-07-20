@@ -3,6 +3,12 @@
 Scikit Bayesian Optimizer
 -------------------------
 
+This algorithm class provides a wrapper for `Bayesian optimizer`_
+using Gaussian process implemented in `scikit optimize`_.
+
+.. _scikit optimize: https://scikit-optimize.github.io/
+.. _bayesian optimizer: https://scikit-optimize.github.io/#skopt.Optimizer
+
 .. code-block:: yaml
 
     experiment:
