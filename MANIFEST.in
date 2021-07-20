@@ -12,6 +12,7 @@ exclude .pylintrc
 exclude codecov.yml
 exclude .mailmap
 exclude docs/src/_static/stub
+exclude .readthedocs.yml
 prune .github/
 
 # Include src, tests, docs
