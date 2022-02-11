@@ -9,10 +9,10 @@
    :synopsis: Use Gaussian Process regression to locally search for a minimum.
 
 """
-from collections import defaultdict
-import copy
 import contextlib
+import copy
 import logging
+from collections import defaultdict
 
 import numpy as np
 from orion.algo.base import BaseAlgorithm

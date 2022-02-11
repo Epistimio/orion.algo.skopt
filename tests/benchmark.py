@@ -4,9 +4,9 @@
 import argparse
 
 import orion.core.cli
-from orion.benchmark.benchmark_client import get_or_create_benchmark
 from orion.benchmark.assessment import AverageResult
-from orion.benchmark.task import RosenBrock, EggHolder, CarromTable, Branin
+from orion.benchmark.benchmark_client import get_or_create_benchmark
+from orion.benchmark.task import Branin, CarromTable, EggHolder, RosenBrock
 
 
 def main(argv=None):
