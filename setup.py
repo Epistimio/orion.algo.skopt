@@ -28,9 +28,7 @@ setup_args = dict(
     package_dir={"": "src"},
     include_package_data=True,
     entry_points={
-        "OptimizationAlgorithm": [
-            "skopt_bayes = orion.algo.skopt.bayes:BayesianOptimizer"
-        ],
+        "BaseAlgorithm": ["skopt_bayes = orion.algo.skopt.bayes:BayesianOptimizer"],
     },
     install_requires=["orion>=0.1.15", "scikit-optimize>=0.5.1"],
     tests_require=tests_require,
