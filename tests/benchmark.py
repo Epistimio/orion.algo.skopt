@@ -6,7 +6,7 @@ import argparse
 import orion.core.cli
 from orion.benchmark.assessment import AverageResult
 from orion.benchmark.benchmark_client import get_or_create_benchmark
-from orion.benchmark.task import Branin, CarromTable, EggHolder, RosenBrock
+from orion.benchmark.task import Branin, RosenBrock
 
 
 def main(argv=None):
@@ -34,9 +34,7 @@ def main(argv=None):
     options = parser.parse_args(argv)
 
     benchmark = get_or_create_benchmark(
-        # TODO Add template here
         name="benchmark_bayesian_optimizer",
-        # TODO Add template here
         algorithms=["random", "bayesianoptimizer"],
         debug=True,  # Use EphemeralDB
         targets=[
@@ -45,10 +43,8 @@ def main(argv=None):
                     AverageResult(options.repetitions),
                 ],
                 "task": [
-                    Branin(options.max_trials)n
-                    # RosenBrock(options.max_trials, dim=3),
-                    # EggHolder(options.max_trials, dim=4),
-                    # CarromTable(options.max_trials),
+                    Branin(options.max_trials),
+                    RosenBrock(options.max_trials, dim=3),
                 ],
             }
         ],

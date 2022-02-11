@@ -17,7 +17,6 @@ from collections import defaultdict
 import numpy as np
 from orion.algo.base import BaseAlgorithm
 from orion.algo.parallel_strategy import strategy_factory
-from orion.algo.space import check_random_state
 from orion.core.utils import format_trials
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
@@ -158,6 +157,7 @@ class BayesianOptimizer(BaseAlgorithm):
 
     @contextlib.contextmanager
     def get_optimizer(self):
+        """Get resumed optimizer"""
         optimizer = Optimizer(
             base_estimator=GaussianProcessRegressor(
                 alpha=self.alpha,
@@ -235,26 +235,19 @@ class BayesianOptimizer(BaseAlgorithm):
                     self.register(trial)
                     samples.append(trial)
 
-        # if len(samples) < num:
-        #     log.warning(
-        #         "Bayesian optimizer could not sample %s in less than %s attemps. "
-        #         "Returning %s samples instead.",
-        #         num,
-        #         attempts,
-        #         len(samples),
-        #     )
-
         return samples
 
     def get_data(self):
-        X = copy.deepcopy(self._suggested)
-        y = []
-        for point in X:
-            y.append(self.get_y(point))
+        """Get points with result or fake result if not completed"""
+        points = copy.deepcopy(self._suggested)
+        results = []
+        for point in points:
+            results.append(self.get_y(point))
 
-        return X, y
+        return points, results
 
     def get_y(self, point):
+        """Get result or fake result if trial not completed"""
         trial = format_trials.tuple_to_trial(point, self.space)
         if self.has_observed(trial):
             return self._trials_info[self.get_id(trial)][0].objective.value
