@@ -9,11 +9,15 @@
    :synopsis: Use Gaussian Process regression to locally search for a minimum.
 
 """
+import contextlib
+import copy
 import logging
+from collections import defaultdict
 
-import numpy
+import numpy as np
 from orion.algo.base import BaseAlgorithm
-from orion.algo.space import check_random_state
+from orion.algo.parallel_strategy import strategy_factory
+from orion.core.utils import format_trials
 from skopt import Optimizer, Space
 from skopt.learning import GaussianProcessRegressor
 from skopt.space import Real
@@ -46,10 +50,6 @@ class BayesianOptimizer(BaseAlgorithm):
        Problem's definition
     seed: int (default: None)
        Seed used for the random number generator
-    strategy : str (default: cl_min)
-       Method to use to sample multiple points.
-       Supported options are ``["cl_min", "cl_mean", "cl_max"]``.
-       Check skopt docs for details.
     n_initial_points : int (default: 10)
        Number of evaluations of trials with initialization points
        before approximating it with `base_estimator`. Points provided as
@@ -86,6 +86,13 @@ class BayesianOptimizer(BaseAlgorithm):
        zero. When enabled, the normalization effectively modifies the GP's
        prior based on the data, which contradicts the likelihood principle;
        normalization is thus disabled per default.
+    parallel_strategy: dict or None, optional
+        The configuration of a parallel strategy to use for pending trials or broken trials.
+        Default is a MaxParallelStrategy for broken trials and NoParallelStrategy for pending
+        trials.
+    convergence_duplicates: int, optional
+        Number of duplicate points the algorithm may sample before considering itself as done.
+        Default: 10.
 
     """
 
@@ -98,29 +105,43 @@ class BayesianOptimizer(BaseAlgorithm):
         self,
         space,
         seed=None,
-        strategy=None,
         n_initial_points=10,
         acq_func="gp_hedge",
         alpha=1e-10,
         n_restarts_optimizer=0,
         noise="gaussian",
         normalize_y=False,
+        parallel_strategy=None,
+        convergence_duplicates=5,
     ):
-        if strategy is not None:
-            log.warning("Strategy is deprecated and will be removed in v0.1.2.")
+        if parallel_strategy is None:
+            parallel_strategy = {
+                "of_type": "StatusBasedParallelStrategy",
+                "strategy_configs": {
+                    "broken": {
+                        "of_type": "MaxParallelStrategy",
+                    },
+                },
+                "default_strategy": {"of_type": "MaxParallelStrategy"},
+            }
 
-        self.optimizer = None
+        self.strategy = strategy_factory.create(**parallel_strategy)
+
+        self.rng = None
+        self._optimizer_state = {}
+        self._suggested = []
 
         super(BayesianOptimizer, self).__init__(
             space,
             seed=seed,
-            strategy=strategy,
             n_initial_points=n_initial_points,
             acq_func=acq_func,
             alpha=alpha,
             n_restarts_optimizer=n_restarts_optimizer,
             noise=noise,
             normalize_y=normalize_y,
+            parallel_strategy=parallel_strategy,
+            convergence_duplicates=convergence_duplicates,
         )
 
     @property
@@ -133,58 +154,56 @@ class BayesianOptimizer(BaseAlgorithm):
         """Set the space of the BO and initialize it"""
         self._original = self._space
         self._space = space
-        self._initialize()
 
-    def _initialize(self):
-        """Initialize the optimizer once the space is transformed"""
-        self.optimizer = Optimizer(
+    @contextlib.contextmanager
+    def get_optimizer(self):
+        """Get resumed optimizer"""
+        optimizer = Optimizer(
             base_estimator=GaussianProcessRegressor(
                 alpha=self.alpha,
                 n_restarts_optimizer=self.n_restarts_optimizer,
                 noise=self.noise,
                 normalize_y=self.normalize_y,
+                random_state=self.rng.randint(0, np.iinfo(np.int32).max),
             ),
+            random_state=self.rng,
             dimensions=orion_space_to_skopt_space(self.space),
             n_initial_points=self.n_initial_points,
             acq_func=self.acq_func,
+            model_queue_size=1,
         )
+        if "gains_" in self._optimizer_state:
+            optimizer.gains_ = self._optimizer_state["gains_"]
+        points, results = self.get_data()
+        if points:
+            optimizer.tell(points, results)
 
-        self.seed_rng(self.seed)
+        yield optimizer
+
+        # We keep gains_ to rebuild the Optimizer based on copy() method here:
+        # https://github.com/scikit-optimize/scikit-optimize/blob/0.7.X/skopt/optimizer/optimizer.py#L272
+        if hasattr(optimizer, "gains_"):
+            self._optimizer_state["gains_"] = optimizer.gains_
 
     def seed_rng(self, seed):
         """Seed the state of the random number generator.
 
         :param seed: Integer seed for the random number generator.
         """
-        if self.optimizer:
-            self.optimizer.rng.seed(seed)
-            self.optimizer.base_estimator_.random_state = self.optimizer.rng.randint(
-                0, 100000
-            )
+        if self.rng is None:
+            self.rng = np.random.RandomState(seed)
+        else:
+            self.rng.seed(seed)
 
     @property
     def state_dict(self):
         """Return a state dict that can be used to reset the state of the algorithm."""
-        state_dict = super(BayesianOptimizer, self).state_dict
+        state_dict = copy.deepcopy(super(BayesianOptimizer, self).state_dict)
 
-        if self.optimizer is None:
-            return state_dict
-
-        state_dict.update(
-            {
-                "optimizer_rng_state": self.optimizer.rng.get_state(),
-                "estimator_rng_state": check_random_state(
-                    self.optimizer.base_estimator_.random_state
-                ).get_state(),
-                "Xi": self.optimizer.Xi,
-                "yi": self.optimizer.yi,
-                # pylint: disable = protected-access
-                "_n_initial_points": self.optimizer._n_initial_points,
-                "gains_": getattr(self.optimizer, "gains_", None),
-                "models": self.optimizer.models,
-                "_next_x": getattr(self.optimizer, "_next_x", None),
-            }
-        )
+        state_dict["rng_state"] = copy.deepcopy(self.rng.get_state())
+        state_dict["strategy"] = copy.deepcopy(self.strategy.state_dict)
+        state_dict["_suggested"] = copy.deepcopy(self._suggested)
+        state_dict["_optimizer_state"] = copy.deepcopy(self._optimizer_state)
 
         return state_dict
 
@@ -193,115 +212,56 @@ class BayesianOptimizer(BaseAlgorithm):
 
         :param state_dict: Dictionary representing state of an algorithm
         """
-        super(BayesianOptimizer, self).set_state(state_dict)
-        if self.optimizer and "optimizer_rng_state" in state_dict:
-            self.optimizer.rng.set_state(state_dict["optimizer_rng_state"])
-            rng = numpy.random.RandomState(0)
-            rng.set_state(state_dict["estimator_rng_state"])
-            self.optimizer.base_estimator_.random_state = rng
-            self.optimizer.Xi = state_dict["Xi"]
-            self.optimizer.yi = state_dict["yi"]
-            # pylint: disable = protected-access
-            self.optimizer._n_initial_points = state_dict["_n_initial_points"]
-            self.optimizer.gains_ = state_dict["gains_"]
-            self.optimizer.models = state_dict["models"]
-            # pylint: disable = protected-access
-            self.optimizer._next_x = state_dict["_next_x"]
+        super(BayesianOptimizer, self).set_state(copy.deepcopy(state_dict))
+
+        self.strategy.set_state(copy.deepcopy(state_dict["strategy"]))
+        self.rng.set_state(copy.deepcopy(state_dict["rng_state"]))
+        self._suggested = copy.deepcopy(state_dict["_suggested"])
+        self._optimizer_state = copy.deepcopy(state_dict["_optimizer_state"])
 
     def suggest(self, num=None):
-        """Suggest a `num`ber of new sets of parameters.
-
-        Perform a step towards negative gradient and suggest that point.
-
-        """
-        num = min(num, max(self.n_initial_points - self.n_suggested, 1))
-
+        """Suggest a `num`ber of new sets of parameters."""
         samples = []
-        candidates = []
-        while len(samples) < num:
-            if candidates:
-                candidate = candidates.pop(0)
-                if candidate:
-                    self.register(candidate)
-                    samples.append(candidate)
-            elif self.n_observed < self.n_initial_points:
-                candidates = self._suggest_random(num)
-            else:
-                candidates = self._suggest_bo(max(num - len(samples), 0))
+        with self.get_optimizer() as optimizer:
+            while len(samples) < num and not self.is_done:
+                new_point = optimizer.ask()
 
-            if not candidates:
-                break
+                self._suggested.append(new_point)
+                optimizer.tell(new_point, self.get_y(new_point))
+
+                trial = format_trials.tuple_to_trial(new_point, self.space)
+
+                if not self.has_suggested(trial):
+                    self.register(trial)
+                    samples.append(trial)
 
         return samples
 
-    def _suggest(self, num, function):
-        points = []
+    def get_data(self):
+        """Get points with result or fake result if not completed"""
+        points = copy.deepcopy(self._suggested)
+        results = []
+        for point in points:
+            results.append(self.get_y(point))
 
-        attempts = 0
-        max_attempts = 100
-        while len(points) < num and attempts < max_attempts:
-            for candidate in function(num - len(points)):
-                if not self.has_suggested(candidate):
-                    self.register(candidate)
-                    points.append(candidate)
+        return points, results
 
-                if self.is_done:
-                    return points
+    def get_y(self, point):
+        """Get result or fake result if trial not completed"""
+        trial = format_trials.tuple_to_trial(point, self.space)
+        if self.has_observed(trial):
+            return self._trials_info[self.get_id(trial)][0].objective.value
 
-            attempts += 1
-            print(attempts)
+        return self.strategy.infer(trial).objective.value
 
-        return points
-
-    def _suggest_random(self, num):
-        def sample(num):
-            return self.space.sample(
-                num, seed=tuple(self.optimizer.rng.randint(0, 1000000, size=3))
-            )
-
-        return self._suggest(num, sample)
-
-    def _suggest_bo(self, num):
-        # pylint: disable = unused-argument
-        def suggest_bo(num):
-            # pylint: disable = protected-access
-            point = self.optimizer._ask()
-
-            # If already suggested, give corresponding result to BO to sample another point
-            if self.has_suggested(point):
-                result = self._trials_info[self.get_id(point)][1]
-                if result is None:
-                    results = []
-                    for _, other_result in self._trials_info.values():
-                        if other_result is not None:
-                            results.append(other_result["objective"])
-                    result = numpy.array(results).mean()
-                else:
-                    result = result["objective"]
-
-                self.optimizer.tell([point], [result])
-                return []
-
-            return [point]
-
-        return self._suggest(num, suggest_bo)
-
-    def observe(self, points, results):
+    def observe(self, trials):
         """Observe evaluation `results` corresponding to list of `points` in
         space.
 
-        Save current point and gradient corresponding to this point.
-
         """
-        to_tell = [[], []]
-        for point, result in zip(points, results):
-            if not self.has_observed(point):
-                self.register(point, result)
-                to_tell[0].append(point)
-                to_tell[1].append(result["objective"])
-
-        if to_tell[0]:
-            self.optimizer.tell(*to_tell)
+        self.strategy.observe(trials)
+        for trial in trials:
+            self.register(trial)
 
     @property
     def is_done(self):
@@ -311,6 +271,13 @@ class BayesianOptimizer(BaseAlgorithm):
         By default, the cardinality of the specified search space will be used to check
         if all possible sets of parameters has been tried.
         """
+        hits = defaultdict(int)
+        for point in self._suggested:
+            hits[self.get_id(format_trials.tuple_to_trial(point, self.space))] += 1
+
+        if hits and max(hits.values()) >= self.convergence_duplicates:
+            return True
+
         if self.n_suggested >= self._original.cardinality:
             return True
 
