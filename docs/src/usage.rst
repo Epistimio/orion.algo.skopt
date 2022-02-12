@@ -21,6 +21,15 @@ using Gaussian process implemented in `scikit optimize`_.
                 n_restarts_optimizer: 0
                 noise: "gaussian"
                 normalize_y: False
+                parallel_strategy:
+                    of_type: StatusBasedParallelStrategy
+                    strategy_configs:
+                        broken:
+                            of_type: MaxParallelStrategy
+                    default_strategy:
+                        of_type: NoParallelStrategy
+
 
 .. autoclass:: orion.algo.skopt.bayes.BayesianOptimizer
-   :exclude-members: space, state_dict, set_state, suggest, observe, is_done, seed_rng
+   :exclude-members: space, state_dict, set_state, suggest, observe, is_done, seed_rng, get_data,
+                     get_optimizer, get_y
