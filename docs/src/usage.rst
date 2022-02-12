@@ -31,4 +31,5 @@ using Gaussian process implemented in `scikit optimize`_.
 
 
 .. autoclass:: orion.algo.skopt.bayes.BayesianOptimizer
-   :exclude-members: space, state_dict, set_state, suggest, observe, is_done, seed_rng
+   :exclude-members: space, state_dict, set_state, suggest, observe, is_done, seed_rng, get_data,
+                     get_optimizer, get_y
