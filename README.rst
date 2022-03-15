@@ -35,7 +35,7 @@ For more information, you can find the documentation `here`_.
 
 .. _Oríon: https://orion.readthedocs.io/en/latest
 
-.. _here: https://orion.algo.skopt.readthedocs.io
+.. _here: https://orionalgoskopt.readthedocs.io
 
 
 Installation
